@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RestorAny - Pronađite savršen restoran</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Sidebar - Menu -->
+        <aside class="sidebar left-sidebar">
+            <div class="logo">
+                <h1>RestorAny</h1>
+            </div>
+            
+            <nav class="main-menu">
+                <button class="menu-btn active" data-action="change-location">
+                    <span class="icon">📍</span>
+                    <span>Promijeni lokaciju</span>
+                </button>
+                <button class="menu-btn" data-action="add-restaurant">
+                    <span class="icon">➕</span>
+                    <span>Dodaj restoran</span>
+                </button>
+                <button class="menu-btn" data-action="search-restaurant">
+                    <span class="icon">🔍</span>
+                    <span>Pretraži restoran</span>
+                </button>
+                <button class="menu-btn" data-action="my-reviews">
+                    <span class="icon">⭐</span>
+                    <span>Moje recenzije</span>
+                </button>
+                <button class="menu-btn" data-action="my-visits">
+                    <span class="icon">📅</span>
+                    <span>Moji posjeti</span>
+                </button>
+            </nav>
+            
+            <div class="sidebar-content" id="sidebar-content">
+                <!-- Dynamic content based on selected menu item -->
+                <div id="location-panel" class="panel active">
+                    <h3>Vaša lokacija</h3>
+                    <div class="location-options">
+                        <button class="location-btn" data-city="varazdin">
+                            <span>Varaždin</span>
+                        </button>
+                        <button class="location-btn" data-city="zagreb">
+                            <span>Zagreb</span>
+                        </button>
+                        <button class="location-btn" data-city="current">
+                            <span>Moja trenutna lokacija</span>
+                        </button>
+                        <button class="location-btn" data-city="pick-on-map">
+                            <span>Odaberi na karti</span>
+                        </button>
+                    </div>
+                    <div class="radius-selector">
+                        <label>Radijus pretrage: <span id="radius-value">10</span> km</label>
+                        <input type="range" id="radius-slider" min="1" max="50" value="10">
+                    </div>
+                </div>
+                
+                <div id="add-restaurant-panel" class="panel">
+                    <h3>Dodaj novi restoran</h3>
+                    <form id="add-restaurant-form">
+                        <div class="form-group">
+                            <label>Naziv restorana *</label>
+                            <input type="text" name="naziv" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Adresa</label>
+                            <input type="text" name="adresa">
+                        </div>
+                        <div class="form-group">
+                            <label>Broj telefona</label>
+                            <input type="tel" name="broj_telefona">
+                        </div>
+                        <div class="form-group">
+                            <label>Web stranica</label>
+                            <input type="url" name="web_stranica">
+                        </div>
+                        <div class="form-group">
+                            <label>Kategorije (odvojene zarezom)</label>
+                            <input type="text" name="kategorije" placeholder="talijanski, pizzeria">
+                        </div>
+                        <div class="form-group">
+                            <label>Cijena</label>
+                            <select name="cijena">
+                                <option value="$">$ - Jeftino</option>
+                                <option value="$$" selected>$$ - Umjereno</option>
+                                <option value="$$$">$$$ - Skuplje</option>
+                                <option value="$$$$">$$$$ - Luksuzno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Pogodnosti</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" name="pogodnosti" value="wifi"> WiFi</label>
+                                <label><input type="checkbox" name="pogodnosti" value="parking"> Parking</label>
+                                <label><input type="checkbox" name="pogodnosti" value="terasa"> Terasa</label>
+                                <label><input type="checkbox" name="pogodnosti" value="vjenčanja"> Vjenčanja</label>
+                                <label><input type="checkbox" name="pogodnosti" value="vinarija"> Vinarija</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Slika restorana</label>
+                            <div class="file-upload">
+                                <input type="file" name="slika" id="restaurant-image" accept="image/*">
+                                <label for="restaurant-image" class="file-upload-label">
+                                    <span class="icon">📷</span>
+                                    <span class="text">Odaberi sliku</span>
+                                </label>
+                                <span class="file-name" id="file-name">Nije odabrana slika</span>
+                            </div>
+                        </div>
+                        <p class="hint">Kliknite na kartu za odabir lokacije</p>
+                        <input type="hidden" name="latitude" id="new-lat">
+                        <input type="hidden" name="longitude" id="new-lng">
+                        <button type="submit" class="btn btn-primary">Dodaj restoran</button>
+                    </form>
+                </div>
+                
+                <div id="search-panel" class="panel">
+                    <h3>Pretraži restorane</h3>
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Naziv, kuhinja, jelo...">
+                        <button id="search-btn" class="btn btn-primary">Traži</button>
+                    </div>
+                    <div class="filter-options">
+                        <h4>Filtriraj po:</h4>
+                        <div class="filter-group">
+                            <label>Minimalna ocjena</label>
+                            <select id="filter-rating">
+                                <option value="0">Sve</option>
+                                <option value="3">3+ zvjezdica</option>
+                                <option value="4">4+ zvjezdica</option>
+                                <option value="4.5">4.5+ zvjezdica</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Kategorija</label>
+                            <select id="filter-category">
+                                <option value="">Sve kategorije</option>
+                                <option value="talijanski">Talijanski</option>
+                                <option value="hrvatska">Hrvatska kuhinja</option>
+                                <option value="japanski">Japanski</option>
+                                <option value="američki">Američki</option>
+                                <option value="fast food">Fast food</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Sortiraj po</label>
+                            <select id="sort-by">
+                                <option value="distance">Udaljenosti</option>
+                                <option value="rating">Ocjeni</option>
+                                <option value="reviews">Broju recenzija</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="search-results" class="search-results">
+                        <!-- Search results will be displayed here -->
+                    </div>
+                </div>
+                
+                <div id="my-reviews-panel" class="panel">
+                    <h3>Moje recenzije</h3>
+                    <div id="my-reviews-list" class="reviews-list">
+                        <!-- User's reviews will be displayed here -->
+                    </div>
+                </div>
+                
+                <div id="my-visits-panel" class="panel">
+                    <h3>Moji posjeti</h3>
+                    <div id="my-visits-stats" class="visits-stats">
+                        <!-- Visit statistics -->
+                    </div>
+                    <div id="my-visits-list" class="visits-list">
+                        <!-- User's visits will be displayed here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="user-section">
+                <select id="current-user" class="user-select">
+                    <!-- Users will be loaded here -->
+                </select>
+            </div>
+        </aside>
+
+        <!-- Main Content - Map -->
+        <main class="map-container">
+            <div id="map"></div>
+            <div class="map-overlay" id="map-overlay">
+                <span id="map-overlay-text">Kliknite za odabir lokacije novog restorana</span>
+                <button id="cancel-location-pick" class="btn btn-secondary">Odustani</button>
+            </div>
+        </main>
+
+        <!-- Right Sidebar - Restaurant Details -->
+        <aside class="sidebar right-sidebar" id="right-sidebar">
+            <div class="sidebar-header">
+                <button class="close-btn" id="close-details">✕</button>
+            </div>
+            <div id="restaurant-details">
+                <div class="empty-state">
+                    <span class="icon">🍽️</span>
+                    <p>Kliknite na restoran na karti za prikaz detalja</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modal for adding review -->
+    <div class="modal" id="review-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Dodaj recenziju</h3>
+                <button class="close-btn modal-close">✕</button>
+            </div>
+            <form id="review-form">
+                <input type="hidden" name="restoran_id" id="review-restaurant-id">
+                <div class="form-group">
+                    <label>Ukupna ocjena *</label>
+                    <div class="star-rating" id="star-rating">
+                        <span class="star" data-value="1">★</span>
+                        <span class="star" data-value="2">★</span>
+                        <span class="star" data-value="3">★</span>
+                        <span class="star" data-value="4">★</span>
+                        <span class="star" data-value="5">★</span>
+                    </div>
+                    <input type="hidden" name="ukupna_ocjena" id="rating-value" required>
+                </div>
+                <div class="form-group">
+                    <label>Detaljne ocjene (opcionalno)</label>
+                    <div class="detail-ratings">
+                        <div class="detail-rating">
+                            <span>Hrana</span>
+                            <input type="number" name="hrana" min="1" max="5">
+                        </div>
+                        <div class="detail-rating">
+                            <span>Usluga</span>
+                            <input type="number" name="usluga" min="1" max="5">
+                        </div>
+                        <div class="detail-rating">
+                            <span>Ambijent</span>
+                            <input type="number" name="ambijent" min="1" max="5">
+                        </div>
+                        <div class="detail-rating">
+                            <span>Vrijednost za novac</span>
+                            <input type="number" name="vrijednost_za_novac" min="1" max="5">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Komentar</label>
+                    <textarea name="komentar" rows="4" placeholder="Opišite vaše iskustvo..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Objavi recenziju</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for recording visit -->
+    <div class="modal" id="visit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Zabilježi posjet</h3>
+                <button class="close-btn modal-close">✕</button>
+            </div>
+            <form id="visit-form">
+                <input type="hidden" name="restoran_id" id="visit-restaurant-id">
+                <div class="form-group">
+                    <label>Broj osoba</label>
+                    <input type="number" name="broj_osoba" min="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Datum i vrijeme</label>
+                    <input type="datetime-local" name="vrijeme_posjeta">
+                </div>
+                <button type="submit" class="btn btn-primary">Zabilježi posjet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
